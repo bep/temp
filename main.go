@@ -1,18 +1,43 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-
-	avl "github.com/emirpasic/gods/trees/avltree"
+	"html/template"
 )
 
+type A struct {
+	SliceFunc func() []string
+}
+
+func (A) SliceMethod() []string {
+	return []string{"c", "d"}
+}
+
 func main() {
-	tree := avl.NewWithStringComparator()
+	a := A{}
+	a.SliceFunc = a.SliceMethod
 
-	tree.Put("A", "-a")
-	tree.Put("B", "-b")
-	tree.Put("1A", "-1A")
-	v, _ := tree.Get("A")
+	for _, v := range a.SliceMethod() {
+		fmt.Println(">>", v)
+	}
 
-	fmt.Println(v)
+	for _, v := range a.SliceFunc() {
+		fmt.Println(">>", v)
+	}
+
+	for _, tpl := range []string{"{{ range .SliceMethod  }}{{ . }}{{ end }}", "{{ range .SliceFunc  }}{{ . }}{{ end }}"} {
+
+		var buf bytes.Buffer
+		tmpl, err := template.New("").Parse(tpl)
+		if err != nil {
+			panic(err)
+		}
+		if err := tmpl.Execute(&buf, a); err != nil {
+			panic(err)
+		}
+
+		fmt.Println(buf.String())
+	}
+
 }
