@@ -1,11 +1,18 @@
 package main
 
 import (
-	"time"
+	"fmt"
+
+	avl "github.com/emirpasic/gods/trees/avltree"
 )
 
 func main() {
-	go func() { println("Hello World!") }()
+	tree := avl.NewWithStringComparator()
 
-	time.Sleep(2 * time.Second)
+	tree.Put("A", "-a")
+	tree.Put("B", "-b")
+	tree.Put("1A", "-1A")
+	v, _ := tree.Get("A")
+
+	fmt.Println(v)
 }
