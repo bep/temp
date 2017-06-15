@@ -1,43 +1,69 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"html/template"
+	"flag"
+	"net/http"
+	"os"
+
+	"github.com/asticode/go-astilectron"
+	"github.com/asticode/go-astilog"
+	"github.com/pkg/errors"
 )
 
-type A struct {
-	SliceFunc func() []string
-}
-
-func (A) SliceMethod() []string {
-	return []string{"c", "d"}
-}
-
 func main() {
-	a := A{}
-	a.SliceFunc = a.SliceMethod
+	// Parse flags
+	flag.Parse()
 
-	for _, v := range a.SliceMethod() {
-		fmt.Println(">>", v)
+	// Set up logger
+	astilog.SetLogger(astilog.New(astilog.FlagConfig()))
+
+	// Start server
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<!DOCTYPE html>
+		<html lang="en">
+		<head></head>
+		<body>
+		    Hello world!
+		</body>
+		</html>`))
+	})
+	go http.ListenAndServe("127.0.0.1:4000", nil)
+
+	// Get base dir path
+	var err error
+	var p = os.Getenv("GOPATH") + "/src/github.com/asticode/go-astilectron/examples"
+
+	// Create astilectron
+	var a *astilectron.Astilectron
+	if a, err = astilectron.New(astilectron.Options{
+		AppName:            "Astilectron",
+		AppIconDefaultPath: p + "/gopher.png",
+		AppIconDarwinPath:  p + "/gopher.icns",
+		BaseDirectoryPath:  p,
+	}); err != nil {
+		astilog.Fatal(errors.Wrap(err, "creating new astilectron failed"))
+	}
+	defer a.Close()
+	a.HandleSignals()
+
+	// Start
+	if err = a.Start(); err != nil {
+		astilog.Fatal(errors.Wrap(err, "starting failed"))
 	}
 
-	for _, v := range a.SliceFunc() {
-		fmt.Println(">>", v)
+	// Create window
+	var w *astilectron.Window
+	if w, err = a.NewWindow("http://127.0.0.1:4000", &astilectron.WindowOptions{
+		Center: astilectron.PtrBool(true),
+		Height: astilectron.PtrInt(600),
+		Width:  astilectron.PtrInt(600),
+	}); err != nil {
+		astilog.Fatal(errors.Wrap(err, "new window failed"))
+	}
+	if err = w.Create(); err != nil {
+		astilog.Fatal(errors.Wrap(err, "creating window failed"))
 	}
 
-	for _, tpl := range []string{"{{ range .SliceMethod  }}{{ . }}{{ end }}", "{{ range .SliceFunc  }}{{ . }}{{ end }}"} {
-
-		var buf bytes.Buffer
-		tmpl, err := template.New("").Parse(tpl)
-		if err != nil {
-			panic(err)
-		}
-		if err := tmpl.Execute(&buf, a); err != nil {
-			panic(err)
-		}
-
-		fmt.Println(buf.String())
-	}
-
+	// Blocking pattern
+	a.Wait()
 }
