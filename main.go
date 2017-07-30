@@ -1,98 +1,36 @@
-// program
 package main
 
-import (
-	"context"
-	"errors"
-	"fmt"
-	"net"
-	"net/http"
-	"time"
-
-	"github.com/oklog/oklog/pkg/group"
-)
+import "fmt"
 
 func main() {
 
-	fmt.Println("Example: Add Basic...")
-	var g group.Group
-	{
-		cancel := make(chan struct{})
-		g.Add(func() error {
-			select {
-			case <-time.After(time.Second):
-				fmt.Printf("The first actor had its time elapsed\n")
-				return nil
-			case <-cancel:
-				fmt.Printf("The first actor was canceled\n")
-				return nil
+	queue1 := make(chan string, 2)
+	queue1 <- "one"
+	queue1 <- "two"
+	close(queue1)
+
+	for elem := range queue1 {
+		fmt.Println(elem)
+	}
+
+	fmt.Println("Done...")
+
+	queue2 := make(chan string, 2)
+	queue2 <- "one"
+	queue2 <- "two"
+	close(queue2)
+
+LOOP:
+	for {
+		select {
+		case elem, ok := <-queue2:
+			if !ok {
+				break LOOP
 			}
-		}, func(err error) {
-			fmt.Printf("The first actor was interrupted with: %v\n", err)
-			close(cancel)
-		})
+			fmt.Println(elem)
+		}
 	}
-	{
-		g.Add(func() error {
-			fmt.Printf("The second actor is returning immediately\n")
-			return errors.New("immediate teardown")
-		}, func(err error) {
-			// Note that this interrupt function is called, even though the
-			// corresponding execute function has already returned.
-			fmt.Printf("The second actor was interrupted with: %v\n", err)
-		})
-	}
-	fmt.Printf("The group was terminated with: %v\n", g.Run())
-	// Output:
-	// The second actor is returning immediately
-	// The first actor was interrupted with: immediate teardown
-	// The second actor was interrupted with: immediate teardown
-	// The first actor was canceled
-	// The group was terminated with: immediate teardown
 
-	fmt.Println("\n\nExample: Add Context...")
-	ctx, cancel := context.WithCancel(context.Background())
-	g = group.Group{}
-	{
-		ctx, cancel := context.WithCancel(ctx) // note: shadowed
-		g.Add(func() error {
-			return runUntilCanceled(ctx)
-		}, func(error) {
-			cancel()
-		})
-	}
-	go cancel()
-	fmt.Printf("The group was terminated with: %v\n", g.Run())
-	// Output:
-	// The group was terminated with: context canceled
+	fmt.Println("Done...")
 
-	fmt.Println("\n\nExample: Add Listener...")
-
-	g = group.Group{}
-	{
-		ln, _ := net.Listen("tcp", ":0")
-		g.Add(func() error {
-			defer fmt.Printf("http.Serve returned\n")
-			return http.Serve(ln, http.NewServeMux())
-		}, func(error) {
-			ln.Close()
-		})
-	}
-	{
-		g.Add(func() error {
-			return errors.New("immediate teardown")
-		}, func(error) {
-			//
-		})
-	}
-	fmt.Printf("The group was terminated with: %v\n", g.Run())
-	// Output:
-	// http.Serve returned
-	// The group was terminated with: immediate teardown
-
-}
-
-func runUntilCanceled(ctx context.Context) error {
-	<-ctx.Done()
-	return ctx.Err()
 }
