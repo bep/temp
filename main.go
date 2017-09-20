@@ -1,33 +1,85 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"os"
 
-	"gopkg.in/yaml.v2"
+	"io"
+
+	"github.com/alecthomas/chroma"
+	"github.com/alecthomas/chroma/formatters"
+	"github.com/alecthomas/chroma/formatters/html"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 )
 
 func main() {
 
-	yml := `
-- title: "Harry Potter and the Order of the Phoenix"
-  author: "J.K. Rowlings"
-  pages: 870
-- title: "A Wrinkle in Time"
-  author: "Madeleine L'Engle"
-  pages: 240
-- title: "My Side of the Mountain"
-  author: "Jean Craighead George"
-  pages: 175
-`
+	source := `package main
 
-	var out interface{}
+import (
+	"fmt"
+	"log"
 
-	err := yaml.Unmarshal([]byte(yml), &out)
+	"github.com/alecthomas/chroma/formatters"
+	"github.com/alecthomas/chroma/formatters/html"
+)
+
+func main() {
+	
+	var source = "foo"
+
+	err := quick.Highlight(os.Stdout, source, "go", "html", "monokai")
 
 	if err != nil {
 		log.Fatal(err)
 	}
+}`
+	out, err := os.OpenFile("/Users/bep/hl.html", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	fmt.Printf("Out: %T:%v", out, out)
+	// html.WithClasses()
+
+	options := []html.Option{
+		html.Standalone(), // HTML fragment
+		html.WithLineNumbers(),
+		html.TabWidth(4)}
+
+	formatters.Register("html", html.New(options...))
+
+	err = highlight(out, source, "go", "html", "trac")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func highlight(w io.Writer, source, lexer, formatter, style string) error {
+	l := lexers.Get(lexer)
+	if l == nil {
+		l = lexers.Analyse(source)
+	}
+	if l == nil {
+		l = lexers.Fallback
+	}
+	l = chroma.Coalesce(l)
+
+	f := formatters.Get(formatter)
+	if f == nil {
+		f = formatters.Fallback
+	}
+
+	s := styles.Get(style)
+	if s == nil {
+		s = styles.Fallback
+	}
+
+	writer, err := f.Format(w, s)
+	if err != nil {
+		return err
+	}
+
+	return l.Tokenise(nil, source, writer)
 }
