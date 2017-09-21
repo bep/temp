@@ -27,7 +27,7 @@ import (
 
 func main() {
 	
-	var source = "foo"
+	var source = "foo2"
 
 	err := quick.Highlight(os.Stdout, source, "go", "html", "monokai")
 
@@ -45,6 +45,7 @@ func main() {
 	options := []html.Option{
 		html.Standalone(), // HTML fragment
 		html.WithLineNumbers(),
+		html.HighlightLines([][2]int{[2]int{15, 17}}),
 		html.TabWidth(4)}
 
 	formatters.Register("html", html.New(options...))
@@ -76,10 +77,10 @@ func highlight(w io.Writer, source, lexer, formatter, style string) error {
 		s = styles.Fallback
 	}
 
-	writer, err := f.Format(w, s)
+	it, err := l.Tokenise(nil, source)
 	if err != nil {
 		return err
 	}
 
-	return l.Tokenise(nil, source, writer)
+	return f.Format(w, s, it)
 }
