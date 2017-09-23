@@ -27,7 +27,7 @@ import (
 
 func main() {
 	
-	var source = "foo2"
+	var source = "foo3"
 
 	err := quick.Highlight(os.Stdout, source, "go", "html", "monokai")
 
@@ -40,12 +40,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// html.WithClasses()
-
 	options := []html.Option{
-		html.Standalone(), // HTML fragment
+		html.Standalone(),
 		html.WithLineNumbers(),
-		html.HighlightLines([][2]int{[2]int{15, 17}}),
+		html.HighlightLines([][2]int{[2]int{11, 16}}),
 		html.TabWidth(4)}
 
 	formatters.Register("html", html.New(options...))
@@ -75,6 +73,12 @@ func highlight(w io.Writer, source, lexer, formatter, style string) error {
 	s := styles.Get(style)
 	if s == nil {
 		s = styles.Fallback
+	}
+
+	s = s.Clone()
+	err := s.Add(chroma.LineHighlight, "bg:#f48c42")
+	if err != nil {
+		panic(err)
 	}
 
 	it, err := l.Tokenise(nil, source)
