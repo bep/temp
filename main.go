@@ -43,6 +43,7 @@ func main() {
 	options := []html.Option{
 		html.Standalone(),
 		html.WithLineNumbers(),
+		html.BaseLineNumber(3),
 		html.HighlightLines([][2]int{[2]int{11, 16}}),
 		html.TabWidth(4)}
 
@@ -73,12 +74,6 @@ func highlight(w io.Writer, source, lexer, formatter, style string) error {
 	s := styles.Get(style)
 	if s == nil {
 		s = styles.Fallback
-	}
-
-	s = s.Clone()
-	err := s.Add(chroma.LineHighlight, "bg:#f48c42")
-	if err != nil {
-		panic(err)
 	}
 
 	it, err := l.Tokenise(nil, source)
