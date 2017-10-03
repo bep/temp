@@ -1,85 +1,52 @@
 package main
 
 import (
-	"log"
-	"os"
-
-	"io"
-
-	"github.com/alecthomas/chroma"
-	"github.com/alecthomas/chroma/formatters"
-	"github.com/alecthomas/chroma/formatters/html"
-	"github.com/alecthomas/chroma/lexers"
-	"github.com/alecthomas/chroma/styles"
-)
-
-func main() {
-
-	source := `package main
-
-import (
 	"fmt"
-	"log"
-
-	"github.com/alecthomas/chroma/formatters"
-	"github.com/alecthomas/chroma/formatters/html"
+	"reflect"
 )
 
-func main() {
-	
-	var source = "foo3"
-
-	err := quick.Highlight(os.Stdout, source, "go", "html", "monokai")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}`
-	out, err := os.OpenFile("/Users/bep/hl.html", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	options := []html.Option{
-		html.Standalone(),
-		html.WithLineNumbers(),
-		html.BaseLineNumber(3),
-		html.HighlightLines([][2]int{[2]int{11, 16}}),
-		html.TabWidth(4)}
-
-	formatters.Register("html", html.New(options...))
-
-	err = highlight(out, source, "go", "html", "trac")
-
-	if err != nil {
-		log.Fatal(err)
-	}
+type Helloer interface {
+	Hi()
 }
 
-func highlight(w io.Writer, source, lexer, formatter, style string) error {
-	l := lexers.Get(lexer)
-	if l == nil {
-		l = lexers.Analyse(source)
-	}
-	if l == nil {
-		l = lexers.Fallback
-	}
-	l = chroma.Coalesce(l)
+type (
+	Hi1      int
+	Hi2      int
+	Helloers []Helloer
+)
 
-	f := formatters.Get(formatter)
-	if f == nil {
-		f = formatters.Fallback
-	}
+func (h Hi1) Hi() {
+	fmt.Println("Hi", h)
+}
 
-	s := styles.Get(style)
-	if s == nil {
-		s = styles.Fallback
-	}
+func (h Hi2) Hi() {
+	fmt.Println("Hi2", h)
+}
 
-	it, err := l.Tokenise(nil, source)
-	if err != nil {
-		return err
-	}
+func (h Helloers) Filter(by Helloer) Helloers {
+	var filtered Helloers
 
-	return f.Format(w, s, it)
+	tp := reflect.TypeOf(by)
+
+	for _, helloer := range h {
+		htp := reflect.TypeOf(helloer)
+		if htp.AssignableTo(tp) {
+			filtered = append(filtered, helloer)
+		}
+
+	}
+	return filtered
+}
+
+func main() {
+	h1 := Hi1(1)
+	h11 := Hi1(11)
+	h2 := Hi2(2)
+	hellos := Helloers{h1, h2, h1, h11}
+
+	filtered := hellos.Filter((Hi1)(0))
+
+	fmt.Println("Filtered:", filtered)
+	// => Filtered: [1 1 11]
+
 }
