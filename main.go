@@ -1,52 +1,41 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"reflect"
+	"log"
+	"text/template"
 )
-
-type Helloer interface {
-	Hi()
-}
-
-type (
-	Hi1      int
-	Hi2      int
-	Helloers []Helloer
-)
-
-func (h Hi1) Hi() {
-	fmt.Println("Hi", h)
-}
-
-func (h Hi2) Hi() {
-	fmt.Println("Hi2", h)
-}
-
-func (h Helloers) Filter(by Helloer) Helloers {
-	var filtered Helloers
-
-	tp := reflect.TypeOf(by)
-
-	for _, helloer := range h {
-		htp := reflect.TypeOf(helloer)
-		if htp.AssignableTo(tp) {
-			filtered = append(filtered, helloer)
-		}
-
-	}
-	return filtered
-}
 
 func main() {
-	h1 := Hi1(1)
-	h11 := Hi1(11)
-	h2 := Hi2(2)
-	hellos := Helloers{h1, h2, h1, h11}
+	var (
+		tpl1 = `{{define "T1"}}T1_1{{end}}TPL1:{{template "T1"}}`
+		tpl2 = `{{define "T1"}}T1_2{{end}}TPL2:{{template "T1"}}`
+	)
 
-	filtered := hellos.Filter((Hi1)(0))
+	var buf bytes.Buffer
+	tmpl := template.New("")
 
-	fmt.Println("Filtered:", filtered)
-	// => Filtered: [1 1 11]
+	tmpl1, err := tmpl.New("tpl1").Parse(tpl1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpl2, err := tmpl.New("tpl2").Parse(tpl2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := tmpl1.Execute(&buf, nil); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(buf.String())
+
+	buf.Reset()
+	if err := tmpl2.Execute(&buf, nil); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(buf.String())
 
 }
