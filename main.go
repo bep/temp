@@ -1,41 +1,28 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"log"
-	"text/template"
+
+	"github.com/spf13/viper"
 )
 
 func main() {
-	var (
-		tpl1 = `{{define "T1"}}T1_1{{end}}TPL1:{{template "T1"}}`
-		tpl2 = `{{define "T1"}}T1_2{{end}}TPL2:{{template "T1"}}`
-	)
 
-	var buf bytes.Buffer
-	tmpl := template.New("")
+	b := new(bool)
+	c := false
 
-	tmpl1, err := tmpl.New("tpl1").Parse(tpl1)
-	if err != nil {
-		log.Fatal(err)
-	}
-	tmpl2, err := tmpl.New("tpl2").Parse(tpl2)
-	if err != nil {
-		log.Fatal(err)
-	}
+	v := viper.New()
 
-	if err := tmpl1.Execute(&buf, nil); err != nil {
-		log.Fatal(err)
-	}
+	v.Set("a1", b)
+	v.Set("a2", c)
 
-	fmt.Println(buf.String())
+	fmt.Println(">>>", v.GetBool("a1"))
+	fmt.Println(">>>", v.GetBool("a2"))
 
-	buf.Reset()
-	if err := tmpl2.Execute(&buf, nil); err != nil {
-		log.Fatal(err)
-	}
+	*b = true
+	c = true
 
-	fmt.Println(buf.String())
+	fmt.Println(">>>", v.GetBool("a1"))
+	fmt.Println(">>>", v.GetBool("a2"))
 
 }
