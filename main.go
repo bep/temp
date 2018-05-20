@@ -1,45 +1,57 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
+	"log"
+
+	"reflect"
+
+	"github.com/mitchellh/mapstructure"
 )
 
-type MM map[string]interface{}
-
-func (m MM) MyMy() string {
-	return fmt.Sprintf("ABC: %v\n", m["a"])
-}
-
-type A struct {
-	Func func() []string
-	Map  map[string]interface{}
-}
-
-func (A) Method() []string {
-	return []string{"c", "d"}
+type T struct {
+	M1 map[string]interface{}
+	S1 []interface{}
+	S2 []interface{}
 }
 
 func main() {
+	dest := &T{}
 
-	m := make(MM)
+	hook := func(t1 reflect.Type, t2 reflect.Type, v interface{}) (interface{}, error) {
+		fmt.Printf("%v\n", v)
+		return v, nil
+	}
 
-	m["a"] = "aa"
-	m["b"] = "bb"
+	input := map[string]interface{}{
+		"M1": map[string]interface{}{
+			"V1": "v1",
+			"M2": map[string]interface{}{
+				"V2": "v2",
+			},
+		},
+		"S1": []interface{}{"VS1_1", "VS1_2"},
+		"S2": []interface{}{map[string]interface{}{
+			"VMS": "vms",
+		}},
+	}
 
-	for _, tpl := range []string{"{{ range $k, $v := .  }}-- {{ $k }}: {{ $v }}{{ end }} => {{ .MyMy }}"} {
+	conf := &mapstructure.DecoderConfig{
+		DecodeHook:       hook,
+		ErrorUnused:      false,
+		WeaklyTypedInput: false,
+		Metadata:         nil,
+		Result:           dest,
+		ZeroFields:       true,
+	}
 
-		var buf bytes.Buffer
-		tmpl, err := template.New("").Parse(tpl)
-		if err != nil {
-			panic(err)
-		}
-		if err := tmpl.Execute(&buf, m); err != nil {
-			panic(err)
-		}
-
-		fmt.Println(buf.String())
+	dec, err := mapstructure.NewDecoder(conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = dec.Decode(input)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 }
