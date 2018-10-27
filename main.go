@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log"
 	"strings"
@@ -9,11 +10,12 @@ import (
 
 func main() {
 	data := map[string]interface{}{
-		"style": template.HTMLAttr("background-image: url(../images/logo.png)"),
+		"abc": []string{"a", "b", "c"},
 	}
 	tpl := `
-<section style="{{ .style }}">
-</section>
+{{ range $i, .abc }}
+{{ $i }}
+{{ end }}
 `
 
 	var buf bytes.Buffer
@@ -28,8 +30,6 @@ func main() {
 
 	result := strings.TrimSpace(buf.String())
 
-	if !strings.Contains(result, "background-image") {
-		log.Fatal(result)
-	}
+	fmt.Println(result)
 
 }
