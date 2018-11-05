@@ -1,35 +1,56 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
-	"strings"
+	"sync"
+	"time"
+)
+
+var (
+	overlayTmpl *template.Template
+	masterTmpl  *template.Template
 )
 
 func main() {
-	data := map[string]interface{}{
-		"abc": []string{"a", "b", "c"},
-	}
-	tpl := `
-{{ range $i, .abc }}
-{{ $i }}
-{{ end }}
-`
 
-	var buf bytes.Buffer
-	tmpl, err := template.New("").Parse(tpl)
+	templ, err := template.New("master").Parse(`
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>
+	{{ .title }}
+</title>
+</head>
+<body>
+</body>
+</html>
+`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := tmpl.Execute(&buf, data); err != nil {
-		log.Fatal(err)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for i := 0; i < 1000; i++ {
+				data := map[string]interface{}{
+					"title": fmt.Sprintf("Title %d", i),
+				}
+				if err := templ.Execute(ioutil.Discard, data); err != nil {
+					log.Fatal(err)
+				}
+				time.Sleep(23 * time.Millisecond)
+			}
+		}()
 	}
 
-	result := strings.TrimSpace(buf.String())
-
-	fmt.Println(result)
-
+	wg.Wait()
+	log.Println("Done ...")
 }
