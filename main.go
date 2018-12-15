@@ -2,55 +2,35 @@ package main
 
 import (
 	"fmt"
-	"html/template"
-	"io/ioutil"
 	"log"
-	"sync"
-	"time"
-)
-
-var (
-	overlayTmpl *template.Template
-	masterTmpl  *template.Template
+	"os"
+	"runtime"
+	"syscall"
 )
 
 func main() {
 
-	templ, err := template.New("master").Parse(`
-<!DOCTYPE HTML>
-<html>
-<head>
-<title>
-	{{ .title }}
-</title>
-</head>
-<body>
-</body>
-</html>
-`)
-	if err != nil {
-		log.Fatal(err)
+	if runtime.GOOS == "windows" {
+		const dir = "c://isexists_test"
+		err := os.MkdirAll(dir, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = os.MkdirAll(dir, 0777)
+
+		if err == nil {
+			log.Fatal("should fail")
+		}
+
+		exist := os.IsExist(err)
+
+		var num syscall.Errno
+		if errno, ok := err.(syscall.Errno); ok {
+			num = errno
+		}
+
+		fmt.Printf("%s: Exists: %t Errno: %d", err, exist, num)
 	}
 
-	var wg sync.WaitGroup
-
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for i := 0; i < 1000; i++ {
-				data := map[string]interface{}{
-					"title": fmt.Sprintf("Title %d", i),
-				}
-				if err := templ.Execute(ioutil.Discard, data); err != nil {
-					log.Fatal(err)
-				}
-				time.Sleep(23 * time.Millisecond)
-			}
-		}()
-	}
-
-	wg.Wait()
-	log.Println("Done ...")
 }
