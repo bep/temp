@@ -2,35 +2,53 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"runtime"
-	"syscall"
+	"sync"
 )
+
+type dependencies struct {
+	inits []initer
+}
+
+type initer interface {
+	init() error
+}
+
+type A struct {
+	deps    *dependencies
+	once    sync.Once
+	onceErr error
+	name    string
+	// fn
+}
+
+func (a *A) init() error {
+	a.once.Do(func() {
+		// Init the dependencies first
+		for _, dep := range a.deps.inits {
+			if dep == a {
+				break
+			}
+
+			if err := dep.init(); err != nil {
+				return
+			}
+		}
+
+		fmt.Println("init", a.name)
+	})
+	return nil
+}
 
 func main() {
 
-	if runtime.GOOS == "windows" {
-		const dir = "c://isexists_test"
-		err := os.MkdirAll(dir, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
+	deps := &dependencies{}
 
-		err = os.MkdirAll(dir, 0777)
+	a := &A{name: "a", deps: deps}
+	b := &A{name: "b", deps: deps}
+	c := &A{name: "c", deps: deps}
 
-		if err == nil {
-			log.Fatal("should fail")
-		}
+	deps.inits = []initer{b, c, a}
 
-		exist := os.IsExist(err)
-
-		var num syscall.Errno
-		if errno, ok := err.(syscall.Errno); ok {
-			num = errno
-		}
-
-		fmt.Printf("%s: Exists: %t Errno: %d", err, exist, num)
-	}
+	c.init()
 
 }
