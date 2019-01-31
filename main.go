@@ -2,53 +2,95 @@ package main
 
 import (
 	"fmt"
-	"sync"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
-type dependencies struct {
-	inits []initer
+func main() {
+	comp("A", "b")
+	comp("A", "a")
+	comp("αβδC", "ΑΒΔD")
+	comp("αβδ", "ΑΒΔ")
+	comp("αβδ", "αδβ")
+	comp("好", strings.ToLower("好"))
 }
 
-type initer interface {
-	init() error
+func comp(s, t string) {
+	fmt.Println(s, "vs", t, "=>", CompareFold(s, t), strings.Compare(strings.ToLower(s), strings.ToLower(t)))
 }
 
-type A struct {
-	deps    *dependencies
-	once    sync.Once
-	onceErr error
-	name    string
-	// fn
-}
-
-func (a *A) init() error {
-	a.once.Do(func() {
-		// Init the dependencies first
-		for _, dep := range a.deps.inits {
-			if dep == a {
-				break
-			}
-
-			if err := dep.init(); err != nil {
-				return
-			}
+// CompareFold reports how s and t, interpreted as UTF-8 strings,
+// compare under Unicode case-folding.
+// This function is derived from strings.EqualFold in Go's stdlib.
+// https://github.com/golang/go/blob/ad4a58e31501bce5de2aad90a620eaecdc1eecb8/src/strings/strings.go#L893
+func CompareFold(s, t string) int {
+	for s != "" && t != "" {
+		var sr, tr rune
+		if s[0] < utf8.RuneSelf {
+			sr, s = rune(s[0]), s[1:]
+		} else {
+			r, size := utf8.DecodeRuneInString(s)
+			sr, s = r, s[size:]
+		}
+		if t[0] < utf8.RuneSelf {
+			tr, t = rune(t[0]), t[1:]
+		} else {
+			r, size := utf8.DecodeRuneInString(t)
+			tr, t = r, t[size:]
 		}
 
-		fmt.Println("init", a.name)
-	})
-	return nil
-}
+		if tr == sr {
+			continue
+		}
 
-func main() {
+		c := 1
+		if tr < sr {
+			tr, sr = sr, tr
+			c = -c
+		}
 
-	deps := &dependencies{}
+		//  ASCII only.
+		if tr < utf8.RuneSelf {
+			if sr >= 'A' && sr <= 'Z' {
+				if tr <= 'Z' {
+					// Same case.
+					return -c
+				}
 
-	a := &A{name: "a", deps: deps}
-	b := &A{name: "b", deps: deps}
-	c := &A{name: "c", deps: deps}
+				diff := tr - (sr + 'a' - 'A')
 
-	deps.inits = []initer{b, c, a}
+				if diff < 0 {
+					return c
+				} else if diff > 0 {
+					return -c
+				}
+			}
 
-	c.init()
+			continue
+		}
+
+		// Unicode.
+		r := unicode.SimpleFold(sr)
+		for r != sr && r < tr {
+			r = unicode.SimpleFold(r)
+		}
+
+		if r == tr {
+			continue
+		}
+
+		return c
+	}
+
+	if s == "" && t == "" {
+		return 0
+	}
+
+	if s == "" {
+		return -1
+	}
+
+	return 1
 
 }
