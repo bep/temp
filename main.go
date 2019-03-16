@@ -4,50 +4,38 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"text/template"
 )
 
-type Niller interface {
-	Nil() Niller
-	Foo() string
-}
-
-type Nill struct {
-	nilv Niller
-}
-
-func (n Nill) Nil() Niller {
-	return n.nilv
-}
-
-func (n Nill) Foo() string {
-	return "asdf"
-}
-
 func main() {
+	var buf bytes.Buffer
+	tmpl := template.New("")
+	setFuncs(tmpl, "init")
 
-	tmpl, err := template.New("").Parse(`{{ with .Nil }}Failed, got {{ . }}{{ else }}OK{{ end }}`)
+	var err error
+	tmpl, err = tmpl.Parse(`{{ hello}}`)
 	if err != nil {
+		log.Fatal("parse failed:", err)
+	}
+
+	setFuncs(tmpl, "changed1")
+
+	if err := tmpl.Execute(&buf, nil); err != nil {
 		log.Fatal(err)
 	}
 
-	var (
-		nil1 Niller = (*Nill)(nil)
-		nil2 Niller
-		nil3 *Nill
-		nil4 Niller = nil
-	)
+	result := strings.TrimSpace(buf.String())
+	fmt.Println(result)
 
-	for i, niller := range []Niller{nil1, nil2, nil3, nil4} {
+}
 
-		var buff bytes.Buffer
-		n := &Nill{nilv: niller}
-		a, b := template.IsTrue(n.Nil())
-		err = tmpl.Execute(&buff, n)
-		if err != nil {
-			fmt.Println("error:", err)
-			continue
-		}
-		fmt.Println(i+1, a, b, buff.String())
+func setFuncs(templ *template.Template, name string) {
+
+	funcs := template.FuncMap{
+		"hello": func() string { return name },
 	}
+
+	templ.Funcs(funcs)
+
 }
