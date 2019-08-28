@@ -1,45 +1,62 @@
 package main
 
 import (
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
+	"bytes"
+	"fmt"
+	"strconv"
+
+	"github.com/disintegration/gift"
+	"github.com/mitchellh/hashstructure"
 )
 
 func main() {
-	tempDir, err := ioutil.TempDir("", "test-symlinks")
-	if err != nil {
-		log.Fatal(err)
+
+	var slice []interface{}
+
+	slice = append(slice, 3.0)
+	slice = append(slice, 4.1)
+
+	f1 := filter{
+		Filter:  gift.Grayscale(),
+		Options: 32,
 	}
-	defer os.RemoveAll(tempDir)
 
-	wd, _ := os.Getwd()
-	defer func() {
-		os.Chdir(wd)
-	}()
+	f2 := filter{
+		Filter:  gift.Gamma(float32(1.2)),
+		Options: 32,
+	}
 
-	must := func(err error) {
+	f3 := filter{
+		Filter:  gift.Grayscale(),
+		Options: 32,
+	}
+
+	var f4 gift.Filter = filter{
+		Filter:  gift.Grayscale(),
+		Options: 32,
+	}
+
+	fmt.Println("K", key(f1), key(f2), key(f3), key(f4))
+
+}
+
+func key(elements ...interface{}) string {
+
+	var sb bytes.Buffer
+
+	for _, element := range elements {
+		hash, err := hashstructure.Hash(element, nil)
 		if err != nil {
 			panic(err)
 		}
+		sb.WriteString("_")
+		sb.WriteString(strconv.FormatUint(hash, 10))
 	}
 
-	dir1Dir := filepath.Join(tempDir, "dir1")
-	dir1Real := filepath.Join(dir1Dir, "real")
-	dir2Dir := filepath.Join(tempDir, "dir2")
+	return sb.String()
+}
 
-	must(os.MkdirAll(filepath.Join(dir1Real), 0777))
-	must(os.MkdirAll(filepath.Join(dir2Dir), 0777))
-
-	must(os.Chdir(dir1Dir))
-	must(os.Symlink("real", "symlinked"))
-	must(os.Chdir(dir1Real))
-	must(os.Symlink("../real", "cyclic"))
-	os.Chdir(dir2Dir)
-	must(os.Symlink("../dir1/real/cyclic", "dir2real"))
-
-	_, err = filepath.EvalSymlinks(filepath.Join(dir2Dir, "dir2real", "cyclic"))
-	must(err)
-
+type filter struct {
+	Options interface{}
+	gift.Filter
 }

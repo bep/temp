@@ -1,32 +1,27 @@
 package main
 
 import (
-	"sync"
 	"testing"
+
+	qt "github.com/frankban/quicktest"
 )
 
-var global int
-var o sync.Once
-
-func something() {
-	o.Do(func() {
-		global++
-	})
-	x := global
-	for i := 0; i < 1e5; i++ {
-		x += global
-	}
+type B struct {
+	foo string
 }
 
-func TestRace(t *testing.T) {
-	n := 3
-	var wg sync.WaitGroup
-	wg.Add(n)
-	for j := 0; j < n; j++ {
-		go func() {
-			something()
-			wg.Done()
-		}()
-	}
-	wg.Wait()
+func (b *B) Foo() string {
+	return b.foo
+}
+
+func (b *B) String() string {
+	return b.Foo()
+}
+
+func TestNil(t *testing.T) {
+	c := qt.New(t)
+
+	var a *B
+
+	c.Assert(a, qt.Not(qt.IsNil))
 }
