@@ -1,62 +1,50 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
-	"strconv"
+	"log"
+	"math/big"
+	"time"
 
-	"github.com/disintegration/gift"
-	"github.com/mitchellh/hashstructure"
+	"github.com/bep/typedmapcodec"
+
+	"github.com/kr/pretty"
 )
 
 func main() {
-
-	var slice []interface{}
-
-	slice = append(slice, 3.0)
-	slice = append(slice, 4.1)
-
-	f1 := filter{
-		Filter:  gift.Grayscale(),
-		Options: 32,
+	mi := map[string]interface{}{
+		"vstring":   "Hello",
+		"vint":      32,
+		"vrat":      big.NewRat(1, 2),
+		"vtime":     time.Now(),
+		"vduration": 3 * time.Second,
+		"vsliceint": []int{1, 3, 4},
+		"nested": map[string]interface{}{
+			"vint":      55,
+			"vduration": 5 * time.Second,
+		},
+		"nested-typed-int": map[string]int{
+			"vint": 42,
+		},
+		"nested-typed-duration": map[string]time.Duration{
+			"v1": 5 * time.Second,
+			"v2": 10 * time.Second,
+		},
 	}
 
-	f2 := filter{
-		Filter:  gift.Gamma(float32(1.2)),
-		Options: 32,
+	c, err := typedmapcodec.New()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	f3 := filter{
-		Filter:  gift.Grayscale(),
-		Options: 32,
+	data, err := c.Marshal(mi)
+	if err != nil {
+		log.Fatal(err)
+	}
+	m := make(map[string]interface{})
+	if err := c.Unmarshal(data, &m); err != nil {
+		log.Fatal(err)
 	}
 
-	var f4 gift.Filter = filter{
-		Filter:  gift.Grayscale(),
-		Options: 32,
-	}
+	pretty.Print(m)
 
-	fmt.Println("K", key(f1), key(f2), key(f3), key(f4))
-
-}
-
-func key(elements ...interface{}) string {
-
-	var sb bytes.Buffer
-
-	for _, element := range elements {
-		hash, err := hashstructure.Hash(element, nil)
-		if err != nil {
-			panic(err)
-		}
-		sb.WriteString("_")
-		sb.WriteString(strconv.FormatUint(hash, 10))
-	}
-
-	return sb.String()
-}
-
-type filter struct {
-	Options interface{}
-	gift.Filter
 }
