@@ -11,36 +11,53 @@ import (
 	"go.starlark.net/starlark"
 )
 
+//
+
+type readCloserProvider interface {
+	OpenReadCloser() (io.ReadCloser, error)
+}
+
+type openReadCloser func() (io.ReadCloser, error)
+
+func (o openReadCloser) OpenReadCloser() (io.ReadCloser, error) {
+	return o()
+}
+
 type contact struct {
 	Name string
+}
+
+type myhttp struct {
+}
+
+func (myhttp) Get(s string) readCloserProvider {
+	return openReadCloser(func() (io.ReadCloser, error) {
+		resp, err := http.Get(s)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Body, nil
+	})
 }
 
 // https://jsonplaceholder.typicode.com/todos
 
 func main() {
-	get := func(url string) io.Reader {
-		resp, err := http.Get(url)
-		if err != nil {
-			panic(err)
-		}
-		return resp.Body
-	}
 
 	globals := map[string]interface{}{
-		"Get":     get,
+		"http":    myhttp{},
 		"Println": fmt.Println,
 	}
 
 	script1 := []byte(`
 	
-def idiv(x, y):
-  return x // y
+
+
+url = "https://s1.demo.opensourcecms.com/wordpress/wp-json/wp/v2/posts"
 
 
 def getTodos():
-	return Get("https://jsonplaceholder.typicode.com/todos")
-
-
+	return http.Get(url)
 
 `)
 
@@ -57,7 +74,7 @@ def getTodos():
 
 func decodeTODOs(r io.Reader) {
 	dec := json.NewDecoder(r)
-	var todos []interface{}
+	//var todos []interface{}
 	for {
 		var m interface{}
 		if err := dec.Decode(&m); err != nil {
@@ -67,10 +84,11 @@ func decodeTODOs(r io.Reader) {
 			panic(err)
 		}
 
-		todos = append(todos, m)
+		//todos = append(todos, m)
+		fmt.Println(m)
 	}
 
-	fmt.Println("TODOS:", todos)
+	//fmt.Println("TODOS:", todos)
 }
 
 func runFunc(fn *starlark.Function) {
@@ -80,10 +98,21 @@ func runFunc(fn *starlark.Function) {
 		panic(err)
 	}
 
-	rrc := convert.FromValue(v).(io.ReadCloser)
+	f := fromValue(v).(readCloserProvider)
+	rrc, err := f.OpenReadCloser()
+	if err != nil {
+		panic(err)
+	}
 
 	decodeTODOs(rrc)
 	rrc.Close()
+
+}
+
+func fromValue(v starlark.Value) interface{} {
+	vv := convert.FromValue(v)
+
+	return vv
 
 }
 
