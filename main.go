@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	radix "github.com/armon/go-radix"
@@ -12,32 +13,31 @@ import (
 func main() {
 
 	t := radix.New()
-	sects := radix.New()
 
-	sects.Insert("/blog/sect2", "sect")
-	sects.Insert("/blog/sect2/s2_1", "sect")
+	t.Insert("/blog__hb_/a__hl_", "b")
+	t.Insert("/blog__hb_/b/c__hl_", "c")
 
-	t.Insert("/blog/sect2/__b_h__index.md", "_index.md")
-	t.Insert("/blog/sect2/foo/__b_h__index.md", "_index.md")
+	getBundle := func(s string) string {
 
-	t.Insert("/blog/sect2/foo/bar", "_index.md")
-	t.Insert("/blog/sect2/b1/__b_h_index.md", "index.md")
-	t.Insert("/blog/sect2/b1/__b_i_data.json", "data.json")
-	t.Insert("/blog/sect2/b1/__b_i_b2/sunset.jpg", "sunset.jpg")
+		p := path.Dir(strings.TrimPrefix(s, "/blog"))
 
-	printSection(t, "/blog/sect2/")
-}
+		parts := strings.Split(p, "/")[1:]
 
-func printSection(t *radix.Tree, prefix string) {
-	level := strings.Count(prefix, "/")
-	t.WalkPrefix(prefix, func(s string, v interface{}) bool {
-		currentLevel := strings.Count(s, "/")
-		if currentLevel != level {
-			return true
+		for i := len(parts); i >= 0; i-- {
+			key := "/blog__hb_/" + strings.Join(parts[:i], "/") + "__hl_"
+			prefix, _, _ := t.LongestPrefix(key)
+
+			if prefix != "" {
+				return prefix
+			}
+
 		}
 
-		fmt.Println(s)
+		return ""
 
-		return false
-	})
+	}
+
+	//
+
+	fmt.Println("S:", getBundle("/blog/b/c/data.json"))
 }
