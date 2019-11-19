@@ -3,10 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
-	"path/filepath"
+	"runtime/debug"
 
 	"github.com/yuin/goldmark/parser"
 
@@ -14,45 +12,26 @@ import (
 )
 
 func main() {
-	dirname := "./goldmark_crashers"
-	dir, err := os.Open(dirname)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer dir.Close()
 
-	names, _ := dir.Readdirnames(-1)
-
-	for _, name := range names {
-		filename := filepath.Join(dirname, name)
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("Convert", name)
-		convert(b)
-	}
+	convert(`#
+# FOO`)
 }
 
-func convert(src []byte) {
+func convert(src string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Panic:\n", string(debug.Stack()))
+		}
+	}()
+
 	markdown := goldmark.New(
-		goldmark.WithExtensions(
-		//extensions...,
-		),
 		goldmark.WithParserOptions(
-			//parser.WithAttribute(),
 			parser.WithAutoHeadingID(),
 		),
-		goldmark.WithRendererOptions(
-		//rendererOptions...,
-		),
 	)
-
 	var buf bytes.Buffer
 	err := markdown.Convert([]byte(src), &buf)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(buf.String())
 }
