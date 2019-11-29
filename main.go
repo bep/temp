@@ -1,21 +1,37 @@
 package main
 
-import "github.com/alecthomas/chroma/formatters/html"
+import (
+	"bytes"
+	"fmt"
+	"log"
+	"runtime/debug"
 
-type config struct {
-	lineNos bool
-}
+	"github.com/yuin/goldmark/parser"
+
+	"github.com/yuin/goldmark"
+)
 
 func main() {
-	var cfg config
-	opts := getOptions(cfg)
 
-	// Turn off line numbers
-	opts = append(options, html.WithLineNumbers(false))
+	convert(`#
+# FOO`)
 }
 
-func getOptions(cfg config) []html.Option {
-	var options []html.Option
-	options = append(options, html.WithLineNumbers(cfg.lineNos))
-	return options
+func convert(src string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Panic:\n", string(debug.Stack()))
+		}
+	}()
+
+	markdown := goldmark.New(
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+		),
+	)
+	var buf bytes.Buffer
+	err := markdown.Convert([]byte(src), &buf)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
