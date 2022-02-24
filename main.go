@@ -1,32 +1,27 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-var (
-	overlayTmpl *template.Template
-	masterTmpl  *template.Template
-)
+type Data struct {
+	counter uint32
+}
+
+func (d *Data) Incr() uint32 {
+	atomic.AddUint32(&d.counter, 1)
+	return atomic.LoadUint32(&d.counter)
+}
 
 func main() {
-
 	templ, err := template.New("master").Parse(`
-<!DOCTYPE HTML>
-<html>
-<head>
-<title>
-	{{ .title }}
-</title>
-</head>
-<body>
-</body>
-</html>
+{{ .Incr }}
+{{ . }}
 `)
 	if err != nil {
 		log.Fatal(err)
@@ -34,15 +29,14 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
+	data := &Data{}
+
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			for i := 0; i < 1000; i++ {
-				data := map[string]interface{}{
-					"title": fmt.Sprintf("Title %d", i),
-				}
+			for i := 0; i < 10; i++ {
 				if err := templ.Execute(ioutil.Discard, data); err != nil {
 					log.Fatal(err)
 				}
