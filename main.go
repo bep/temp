@@ -1,27 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
+	"math/rand"
 )
 
 func main() {
-	md := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
-		),
-	)
-
-	input := "a <!-- b --> c\nd"
-
-	var buf bytes.Buffer
-	if err := md.Convert([]byte(input), &buf); err != nil {
-		panic(err)
+	for i := 0; i < 30; i++ {
+		fmt.Println("$", rand.Intn(3))
 	}
-
-	fmt.Println(buf.String())
 
 }
